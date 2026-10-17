@@ -1,29 +1,58 @@
-# Python / Bytecode
+# ==============================================================================
+# Polymer Classification - Git Ignore Rules
+# ==============================================================================
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python Bytecode, Builds, and Caches
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+.eggs/
 
-# Virtual Environments
-.venv/
-env/
-venv/
-ENV/
+# Large Image Datasets (26,000+ files / 700 MB)
+# Kept out of Git history to prevent GitHub HTTP buffer/pack limits
+# Sample images for testing & inference are provided in assets/sample_images/
+dataset_crops/
+plastic image/
+temp plastic.jpg
 
-# IDEs and Editors
-.vscode/
+# Large Archives & Bundles
+*.tar.gz
+*.tar
+*.zip
+
+# OS & Editor Metadata
+.DS_Store
+Thumbs.db
 .idea/
+.vscode/
 *.swp
 *.swo
-*.smi
-.vim/
+*.log
 
-# OS Specific Files
-.DS_Store
-.DS_Store?
-._*
-Thumbs.db
-ehthumbs.db
+# Large Binaries (> 100 MB GitHub limit)
+*.onnx
+*.pt
+best_polymer_model_v2.pth
+polymer_classifier_v2.onnx
 
-# Local Generated Data / Test Artifacts
-generated_compositions.json
+# Whitelist tracked core models, evaluations, and composition estimator inputs
+!models/best_polymer_model.pth
+!models/baseline_mobilenet.pth
+!models/model_weights.npz
+!models/test_metrics.json
+!models/test_confusion_matrix.png
+!models/training_history.json
+!models/comparison_summary.json
+!data/predictions.json
+!data/confusion_matrix.json
