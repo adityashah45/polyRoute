@@ -1,0 +1,4 @@
+# Universal Inference Requirements (100% compatible with IBM LinuxONE s390x, x86_64, ARM)
+# Run: pip install -r requirements.txt
+numpy>=1.22.0
+pillow>=9.0.0
