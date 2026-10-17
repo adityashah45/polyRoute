@@ -3,14 +3,19 @@
 from .config import POLYMERS
 
 
-def to_optimiser_input(result):
+def to_optimiser_input(result, total="batch"):
     """
     Builds the optimiser's "composition_data" from estimate_composition() output
+
+    total : "batch"   -> total_kg = whole batch (plastic + non-plastic); sum(kg) <= total_kg
+            "plastic" -> total_kg = plastic only; sum(kg) == total_kg (up to rounding)
 
     margin[p] = half-width of the 95% interval of polymer p, as a share of the
     plastic weight (e.g. 0.0997 = ±9.97 percentage points). 0.0 when no interval exists
 
     """
+    if total not in ("batch", "plastic"):
+        raise ValueError('total must be "batch" or "plastic"')
     plastic_kg = result["plastic_kg"]
     margin = {}
     for p in POLYMERS:
@@ -23,7 +28,7 @@ def to_optimiser_input(result):
 
     return {
         "composition_data": {
-            "total_kg": float(result["total_kg"]),
+            "total_kg": float(result["total_kg"] if total == "batch" else plastic_kg),
             "kg": {p: result["kg"][p] for p in POLYMERS if p in result["kg"]},
             "margin": margin,
             "excluded": dict(result["excluded"]),

@@ -16,7 +16,7 @@ def split_items(items):
     plastic = [it for it in items if it["material"] == "plastic"]
     n_non_plastic = 0
     for it in items:
-        if (it["material"] == "non-plastic"):
+        if (it["material"] == "non_plastic"):
             n_non_plastic+=1
     n_uncertain=0
     for it in items:
