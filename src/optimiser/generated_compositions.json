@@ -1,0 +1,158 @@
+[
+    {
+        "scenario_id": 1,
+        "scenario_name": "Standard Mixed Batch",
+        "composition_data": {
+            "total_kg": 50.0,
+            "kg": {
+                "PET": 3.33,
+                "HDPE": 14.17,
+                "PP": 15.83,
+                "PVC": 16.67
+            },
+            "margin": {
+                "PET": 0.0826,
+                "HDPE": 0.1493,
+                "PP": 0.1541,
+                "PVC": 0.1562
+            },
+            "excluded": {
+                "non_plastic": 1,
+                "uncertain": 1
+            }
+        }
+    },
+    {
+        "scenario_id": 2,
+        "scenario_name": "PET Heavy Batch",
+        "composition_data": {
+            "total_kg": 40.0,
+            "kg": {
+                "PET": 32.73,
+                "HDPE": 7.27
+            },
+            "margin": {
+                "PET": 0.084,
+                "HDPE": 0.084
+            },
+            "excluded": {
+                "non_plastic": 0,
+                "uncertain": 1
+            }
+        }
+    },
+    {
+        "scenario_id": 3,
+        "scenario_name": "Unrecyclable High-PVC Batch",
+        "composition_data": {
+            "total_kg": 35.0,
+            "kg": {
+                "PVC": 16.97,
+                "PP": 18.03
+            },
+            "margin": {
+                "PVC": 0.161,
+                "PP": 0.161
+            },
+            "excluded": {
+                "non_plastic": 5,
+                "uncertain": 0
+            }
+        }
+    },
+    {
+        "scenario_id": 4,
+        "scenario_name": "Large Scale Batch (Exceeds Caps)",
+        "composition_data": {
+            "total_kg": 120.0,
+            "kg": {
+                "PET": 20.8,
+                "HDPE": 8.0,
+                "PP": 30.4,
+                "PVC": 25.6,
+                "LDPE": 6.4,
+                "PS": 28.8
+            },
+            "margin": {
+                "PET": 0.0765,
+                "HDPE": 0.0504,
+                "PP": 0.0879,
+                "PVC": 0.0828,
+                "LDPE": 0.0454,
+                "PS": 0.0863
+            },
+            "excluded": {
+                "non_plastic": 2,
+                "uncertain": 1
+            }
+        }
+    },
+    {
+        "scenario_id": 5,
+        "scenario_name": "Small Batch",
+        "composition_data": {
+            "total_kg": 15.0,
+            "kg": {
+                "PET": 0.88,
+                "PP": 14.12
+            },
+            "margin": {
+                "PET": 0.0659,
+                "PP": 0.0659
+            },
+            "excluded": {
+                "non_plastic": 4,
+                "uncertain": 2
+            }
+        }
+    }
+,
+{
+"scenario_id": 6,
+"scenario_name": "Edge Case: The Empty Batch",
+"composition_data": {
+"kg": {}
+}
+},
+{
+"scenario_id": 7,
+"scenario_name": "Edge Case: 100% Unrecyclable Overflow",
+"composition_data": {
+"kg": {
+"PVC": 100.0,
+"Other": 50.0
+}
+}
+},
+{
+"scenario_id": 8,
+"scenario_name": "Edge Case: Exact Capacity Lock",
+"composition_data": {
+"kg": {
+"PET": 40.0,
+"PVC": 15.0
+}
+}
+},
+{
+"scenario_id": 9,
+"scenario_name": "Edge Case: Micro-Weights",
+"composition_data": {
+"kg": {
+"PET": 0.001,
+"HDPE": 0.005,
+"PP": 0.002
+}
+}
+},
+{
+"scenario_id": 10,
+"scenario_name": "Edge Case: Single Massive Polymer",
+"composition_data": {
+"kg": {
+"HDPE": 1000.0
+}
+}
+}
+
+]
