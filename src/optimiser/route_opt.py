@@ -1,7 +1,8 @@
 import pulp
+import json
+import os
 
 def optimize_routes(composition_data, facility_limits, warm_factors):
-    # Early exit if the composition data is empty
     if not composition_data or all(weight == 0 for weight in composition_data.values()):
         return {
             "plan": {},
@@ -39,8 +40,14 @@ def optimize_routes(composition_data, facility_limits, warm_factors):
     
     status = prob.solve(pulp.GLPK_CMD(msg=False))
     if "Optimal" not in str(status):
-        return {"error": "Infeasible: Facility limits are too tight for the batch weight."}
-        
+        total_weight = sum(composition_data.values())
+        return {
+            "error": (
+                f"Infeasible: The batch weight ({total_weight} kg) exceeds available facility capacities. "
+                "Please raise the landfill or combustion limits in the dashboard to process this overflow."
+            )
+        }
+    
     plan = {}
     notes = []
     
@@ -86,9 +93,6 @@ def optimize_routes(composition_data, facility_limits, warm_factors):
     }
 
 if __name__ == "__main__":
-    import json
-    import os
-
     test_facility_limits = {
         "recycle_cap_kg": 40.0,
         "compost_cap_kg": 10.0,
@@ -105,26 +109,28 @@ if __name__ == "__main__":
         "Other": {"recycle": "NA",  "compost": "NA", "landfill": 0.1, "combust": 1.5}
     }
 
-    json_file = "generated_compositions.json"
+    input_json = "generated_compositions.json"
+    output_json = "optimized_routes_output.json"
     
-    if not os.path.exists(json_file):
-        print(f"File '{json_file}' not found. Please run the generator script first.")
+    if not os.path.exists(input_json):
+        print(f"File '{input_json}' not found. Please run the generator script first.")
     else:
-        with open(json_file, "r") as f:
+        with open(input_json, "r") as f:
             scenarios = json.load(f)
 
-        print("=== PolyRoute Route Optimiser Test ===")
-        print(f"Facility Limits (kg): {test_facility_limits}")
-        
+        results = []
         for case in scenarios:
-            print(f"\n--- Testing Scenario {case['scenario_id']}: {case['scenario_name']} ---")
-            
             comp_kg = case["composition_data"]["kg"]
-            print(f"Input Weights (kg): {comp_kg}")
-            
             result = optimize_routes(comp_kg, test_facility_limits, test_warm_factors)
             
-            if "error" in result:
-                print(f"OPTIMISATION FAILED: {result['error']}")
-            else:
-                print(json.dumps(result, indent=4))
+            results.append({
+                "scenario_id": case.get("scenario_id"),
+                "scenario_name": case.get("scenario_name"),
+                "input_weights_kg": comp_kg,
+                "output": result
+            })
+
+        with open(output_json, "w") as f:
+            json.dump(results, f, indent=4)
+
+        print(f"Successfully generated optimization outputs in '{output_json}'")
