@@ -11,9 +11,11 @@ import json
 import os
 import random
 
+from .config import SYNTHETIC_DIR
+
 POLYMERS = ["PET", "HDPE", "PVC", "LDPE", "PP", "PS", "Other"]
 
-# Default distributions`
+# Default distributions
 DEFAULT_MAT_WEIGHTS = {"plastic": 85, "non_plastic": 10, "uncertain": 5}
 DEFAULT_POLY_WEIGHTS = {
     "PET": 35, "HDPE": 15, "LDPE": 20, "PP": 15, "PS": 7, "PVC": 3, "Other": 5
@@ -26,7 +28,7 @@ def make_probs(predicted, confidence, rng):
     raw = [rng.random() for _ in others]
     scale = (1 - confidence) / sum(raw)
     probs = {p: round(r * scale, 4) for p, r in zip(others, raw)}
-    probs[predicted] = round(1 - sum(probs.values()), 4)  # keeps the total exactly 1
+    probs[predicted] = round(1 - sum(probs.values()), 4)
     return {p: probs[p] for p in POLYMERS}
 
 
@@ -53,8 +55,7 @@ def generate_items(count, mat_weights, poly_weights, rng):
 
 
 def main():
-    out_dir = os.path.join("data", "synthetic")
-    os.makedirs(out_dir, exist_ok=True)
+    SYNTHETIC_DIR.mkdir(parents=True, exist_ok=True)
 
     # filename: (item_count, material_weights, polymer_weights)
     datasets = {
@@ -71,9 +72,9 @@ def main():
     for filename, (count, mat_w, poly_w) in datasets.items():
         rng = random.Random(filename)
         data = generate_items(count, mat_w, poly_w, rng)
-        with open(os.path.join(out_dir, filename), "w", encoding="utf-8") as f:
+        with open(SYNTHETIC_DIR / filename, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
-        print(f"{filename}: {len(data)} items")
+        print(f"{SYNTHETIC_DIR / filename}: {len(data)} items")
 
 
 if __name__ == "__main__":
