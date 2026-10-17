@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PolyRoute</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="masthead">
+  <div class="masthead-inner">
+    <h1 class="brand">PolyRoute</h1>
+    <p class="tagline">Find the lowest-carbon route for every plastic in a batch.</p>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- ======================= inputs ======================= -->
+  <form class="inputs" method="post" action="{{ url_for('analyse') }}" enctype="multipart/form-data">
+    <fieldset>
+      <legend>Waste batch</legend>
+      <label for="sample_file">Classifier output</label>
+      <select id="sample_file" name="sample_file">
+        {% for s in samples %}
+          <option value="{{ s }}" {% if form.get('sample_file', 'medium_100.json') == s %}selected{% endif %}>{{ s }}</option>
+        {% else %}
+          <option value="">No samples – run python -m comp_analyzer.gen</option>
+        {% endfor %}
+      </select>
+      <label for="classifier_file" class="secondary">Or upload a classifier JSON file</label>
+      <input id="classifier_file" name="classifier_file" type="file" accept=".json,application/json">
+      <p class="hint">Photo upload arrives when the classifier is connected.</p>
+    </fieldset>
+
+    <fieldset class="weight">
+      <legend>How much does it weigh?</legend>
+      {% set mode = form.get('weight_mode', 'measured') %}
+      <label class="choice"><input type="radio" name="weight_mode" value="measured" {% if mode == 'measured' %}checked{% endif %}> Weighed</label>
+      <div class="field" data-mode="measured">
+        <label for="total_kg">Batch weight (kg)</label>
+        <input id="total_kg" name="total_kg" inputmode="decimal" value="{{ form.get('total_kg', '50') }}">
+      </div>
+      <label class="choice"><input type="radio" name="weight_mode" value="volume" {% if mode == 'volume' %}checked{% endif %}> Estimate from volume</label>
+      <div class="field" data-mode="volume">
+        <label for="volume_m3">Volume (m³)</label>
+        <input id="volume_m3" name="volume_m3" inputmode="decimal" value="{{ form.get('volume_m3', '') }}" placeholder="e.g. 1.2">
+      </div>
+      <label class="choice"><input type="radio" name="weight_mode" value="count" {% if mode == 'count' %}checked{% endif %}> Estimate from item count</label>
+      <div class="field" data-mode="count">
+        <label for="item_count">Number of items</label>
+        <input id="item_count" name="item_count" inputmode="numeric" value="{{ form.get('item_count', '') }}" placeholder="e.g. 2000">
+      </div>
+      <label class="choice"><input type="radio" name="weight_mode" value="photos" {% if mode == 'photos' %}checked{% endif %}> The photos show the whole batch</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Facility limits</legend>
+      <label for="recycle_cap_kg">Recycling capacity (kg)</label>
+      <input id="recycle_cap_kg" name="recycle_cap_kg" inputmode="decimal" value="{{ form.get('recycle_cap_kg', defaults.recycle_cap_kg|int) }}">
+      <label for="compost_cap_kg">Composting capacity (kg)</label>
+      <input id="compost_cap_kg" name="compost_cap_kg" inputmode="decimal" value="{{ form.get('compost_cap_kg', defaults.compost_cap_kg|int) }}">
+      <label for="landfill_cap_kg">Landfill limit (kg)</label>
+      <input id="landfill_cap_kg" name="landfill_cap_kg" inputmode="decimal" value="{{ form.get('landfill_cap_kg', defaults.landfill_cap_kg|int) }}">
+    </fieldset>
+
+    <button type="submit">Find routes</button>
+  </form>
+
+  <!-- ======================= results ======================= -->
+  <section class="results" aria-live="polite">
+    {% if error %}
+      <div class="message error" role="alert">
+        <h2>Couldn't route this batch</h2>
+        <p>{{ error }}</p>
+      </div>
+    {% elif not view %}
+      <div class="empty">
+        <h2>Route a batch</h2>
+        <p>Pick a classifier output, say how much the batch weighs, and set your facility limits.
+           Then select <strong>Find routes</strong> to see where each plastic should go and how much carbon that saves.</p>
+      </div>
+    {% else %}
+      {% set r = view.result %}
+      <p class="summary">
+        {% if not view.lanes %}
+          No plastic was found in this {{ '%.1f'|format(r.total_kg) }} kg batch, so there is nothing to route.
+        {% else %}
+          This {{ '%.1f'|format(r.total_kg) }} kg batch holds about
+          <strong>{{ '%.1f'|format(r.plastic_kg) }} kg of plastic</strong> across {{ view.lanes|length }} {{ 'type' if view.lanes|length == 1 else 'types' }}.
+          {% if view.saved >= 0.05 %}
+            The plan saves <strong class="saving">{{ '%.1f'|format(view.saved) }} kg CO₂e</strong> compared with landfill.
+          {% elif view.saved <= -0.05 %}
+            With these limits the plan emits <strong class="cost">{{ '%.1f'|format(-view.saved) }} kg CO₂e</strong> more than landfill.
+          {% else %}
+            The plan's carbon is about the same as landfill.
+          {% endif %}
+        {% endif %}
+      </p>
+      <p class="provenance">
+        Based on {{ view.n_items }} items from {{ view.source }}: {{ r.excluded.non_plastic }} non-plastic and {{ r.excluded.uncertain }} unclear items left out.
+        {% if r.total_kg_source == 'measured' %}The batch was weighed.{% else %}The weight was {{ {'volume': 'estimated from its volume', 'item_count': 'estimated from the item count', 'photos_only': 'estimated from the photos'}[r.total_kg_source] }} and is likely between {{ r.total_kg_ci[0] }} and {{ r.total_kg_ci[1] }} kg.{% endif %}
+      </p>
+
+      {% if view.lanes %}
+      <section class="block">
+        <h2>Where each plastic goes</h2>
+        <ul class="legend">
+          {% for route in view.routes_used %}
+            <li><span class="swatch route-{{ route }}"></span>{{ view.route_labels[route] }}</li>
+          {% endfor %}
+        </ul>
+        <ol class="lanes">
+          {% for lane in view.lanes %}
+          <li class="lane">
+            <svg class="resin" viewBox="0 0 40 36" role="img" aria-label="Resin code {{ lane.code }}">
+              <path d="M20 3 L37 33 L3 33 Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>
+              <text x="20" y="27" text-anchor="middle">{{ lane.code }}</text>
+            </svg>
+            <div class="lane-name">
+              <span class="polymer">{{ lane.polymer }}</span>
+              <span class="full-name">{{ lane.name }}</span>
+            </div>
+            <div class="lane-bar" style="--w: {{ '%.1f'|format(lane.width) }}%">
+              {% for s in lane.segments %}
+                <span class="seg route-{{ s.route }}" style="width: {{ '%.2f'|format(s.pct) }}%"
+                      title="{{ s.label }}: {{ '%.2f'|format(s.kg) }} kg"></span>
+              {% endfor %}
+            </div>
+            <div class="lane-kg">
+              <span class="kg">{{ '%.2f'|format(lane.kg) }} kg</span>
+              <span class="ci">{{ lane.low }}–{{ lane.high }} kg</span>
+            </div>
+            <p class="lane-routes">
+              {% for s in lane.segments %}{{ s.label }} {{ '%.2f'|format(s.kg) }} kg{% if not loop.last %}, {% endif %}{% endfor %}
+            </p>
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+
+      <section class="block">
+        <h2>Carbon compared with landfill</h2>
+        <div class="carbon">
+          {% for c in view.carbon %}
+          <div class="carbon-row">
+            <span class="carbon-label">{{ c.label }}</span>
+            <div class="carbon-track">
+              <span class="carbon-bar {{ 'neg' if c.value < 0 else 'pos' }}" style="width: {{ '%.1f'|format(c.width) }}%"></span>
+            </div>
+            <span class="carbon-value">{{ '%+.1f'|format(c.value) }} kg CO₂e</span>
+          </div>
+          {% endfor %}
+          <p class="hint">Bars left of the centre line are net carbon savings; bars to the right are net emissions.</p>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Why this plan</h2>
+        <p class="explanation">{{ view.explanation }}</p>
+        {% for note in view.notes %}<p class="note">{{ note }}</p>{% endfor %}
+      </section>
+      {% endif %}
+
+      {# the summary already says "no plastic", so don't repeat that warning #}
+      {% set warnings = r.warnings if view.lanes else r.warnings|reject('equalto', 'No plastic items found in the sample.')|list %}
+      {% if warnings or view.placeholders %}
+      <section class="block cautions">
+        {% for w in warnings %}<p class="message warn">{{ w }}</p>{% endfor %}
+        {% if view.placeholders %}
+          <p class="message demo">Demo values in use: {{ view.placeholders|join(', ') }}. Results are illustrative until these are replaced.</p>
+        {% endif %}
+      </section>
+      {% endif %}
+    {% endif %}
+  </section>
+</main>
+
+<footer class="footer">
+  {% if machine == 's390x' %}Running on IBM LinuxONE ({{ machine }}){% else %}Running on a development machine ({{ machine }}){% endif %}
+</footer>
+
+<script>
+  // Show only the weight field for the chosen option (the form still works without this).
+  const radios = document.querySelectorAll('input[name="weight_mode"]');
+  function sync() {
+    const mode = document.querySelector('input[name="weight_mode"]:checked').value;
+    document.querySelectorAll('.weight .field').forEach(f => { f.hidden = f.dataset.mode !== mode; });
+  }
+  radios.forEach(r => r.addEventListener('change', sync));
+  sync();
+</script>
+</body>
+</html>
